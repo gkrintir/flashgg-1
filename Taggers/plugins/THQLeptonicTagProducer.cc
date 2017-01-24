@@ -16,7 +16,9 @@
 #include "flashgg/DataFormats/interface/Muon.h"
 #include "flashgg/DataFormats/interface/Photon.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
-#include "DataFormats/PatCandidates/interface/MET.h"
+//#include "DataFormats/PatCandidates/interface/MET.h"
+
+#include "flashgg/DataFormats/interface/Met.h"
 
 #include "DataFormats/TrackReco/interface/HitPattern.h"
 #include "flashgg/Taggers/interface/LeptonSelection.h"
@@ -65,7 +67,8 @@ namespace flashgg {
         EDGetTokenT<View<DiPhotonMVAResult> > mvaResultToken_;
         EDGetTokenT<View<Photon> > photonToken_;
         EDGetTokenT<View<reco::Vertex> > vertexToken_;
-        EDGetTokenT<View<pat::MET> > METToken_;
+        //EDGetTokenT<View<pat::MET> > METToken_;
+        EDGetTokenT<View<flashgg::Met> > METToken_;
         EDGetTokenT<View<reco::GenParticle> > genParticleToken_;
         EDGetTokenT<View<reco::GenJet> > genJetToken_;
         string systLabel_;
@@ -156,6 +159,8 @@ namespace flashgg {
         particleinfo G1 , G2 , DiG , lepton , bjet, jprime, eventshapes , eventshapesMet , met , THReco , Top ;
         particleinfo foxwolf1 , foxwolf2 , foxwolf1Met, foxwolf2Met ;
 
+        TLorentzVector metL, bL,fwdJL;  //temp solution: make met, bjet & jprime global TLorentzVectors
+
         struct GreaterByPt
         {
         public:
@@ -203,7 +208,8 @@ namespace flashgg {
         std::vector<edm::Ptr<flashgg::Jet> > MediumBJetVect; std::vector<edm::Ptr<flashgg::Jet> > MediumBJetVect_EtaSorted; std::vector<edm::Ptr<flashgg::Jet> > MediumBJetVect_PtSorted; std::vector<edm::Ptr<flashgg::Jet> > MediumBJetVect_BSorted;
         std::vector<edm::Ptr<flashgg::Jet> > TightBJetVect;  std::vector<edm::Ptr<flashgg::Jet> > TightBJetVect_EtaSorted; std::vector<edm::Ptr<flashgg::Jet> > TightBJetVect_PtSorted; std::vector<edm::Ptr<flashgg::Jet> > TightBJetVect_BSorted;
         float  n_jets = 0; float n_bjets=0; float  n_ljets = 0; int n_lbjets = 0; int n_mbjets = 0; int n_tbjets = 0;
-
+        
+        float jprime_eta,met_pt;
 
     };
 
@@ -217,6 +223,7 @@ namespace flashgg {
         mvaResultToken_( consumes<View<flashgg::DiPhotonMVAResult> >( iConfig.getParameter<InputTag> ( "MVAResultTag" ) ) ),
         vertexToken_( consumes<View<reco::Vertex> >( iConfig.getParameter<InputTag> ( "VertexTag" ) ) ),
         //METToken_( consumes<View<pat::MET> >( iConfig.getParameter<InputTag> ( "METTag" ) ) ),
+        METToken_( consumes<View<flashgg::Met> >( iConfig.getParameter<InputTag> ( "METTag" ) ) ),
         genParticleToken_( consumes<View<reco::GenParticle> >( iConfig.getParameter<InputTag> ( "GenParticleTag" ) ) ),
         genJetToken_ ( consumes<View<reco::GenJet> >( iConfig.getParameter<InputTag> ( "GenJetTag" ) ) ),
         systLabel_( iConfig.getParameter<string> ( "SystLabel" ) ),
@@ -313,10 +320,10 @@ namespace flashgg {
         if (MVAMethod_ != ""){
             thqLeptonicMva_.reset( new TMVA::Reader( "!Color:Silent" ) );
 
-            thqLeptonicMva_->AddVariable( "nJets"              , &n_jets      );
-            thqLeptonicMva_->AddVariable( "Max$(abs(jetsEta))" , &jprime.eta        );
-            thqLeptonicMva_->AddVariable( "met.pt"             , &met.pt            );
-            thqLeptonicMva_->AddVariable( "lepton.iso"         , &lepton.another    );
+            thqLeptonicMva_->AddVariable( "nJets"              , &n_jets    );
+            thqLeptonicMva_->AddVariable( "Max$(abs(jetsEta))" , &jprime_eta);  //jprime.eta 
+            thqLeptonicMva_->AddVariable( "met.pt"             , &met_pt    );  //met.pt 
+            thqLeptonicMva_->AddVariable( "lepton.charge"      , &lepton.another    );
             thqLeptonicMva_->AddVariable( "eventshapes.aplanarity", &eventshapes.pt);
             thqLeptonicMva_->AddVariable( "foxwolf1.ONE"       , &foxwolf1.another);
             
@@ -368,6 +375,9 @@ namespace flashgg {
 
         //Handle<View<pat::MET> > METs;
         //evt.getByToken( METToken_, METs );
+
+        Handle<View<flashgg::Met> > METs;
+        evt.getByToken( METToken_, METs );
 
         /*
         std::auto_ptr<vector<VBFTagTruth> > truths( new vector<VBFTagTruth> );
@@ -486,17 +496,17 @@ namespace flashgg {
             particles_RhoEtaPhiVector.push_back( math::RhoEtaPhiVector(G1.pt, G1.eta , G1.phi) );
             particles_RhoEtaPhiVector.push_back( math::RhoEtaPhiVector(G2.pt, G2.eta , G2.phi) );
 
+            if( METs->size() != 1 ) { std::cout << "WARNING - #MET is not 1" << std::endl;}
+            Ptr<flashgg::Met> theMET = METs->ptrAt( 0 );
+
             //const pat::MET &met_ = METs->front();
             //std::cout << met_.pt() <<std::endl;
-            met.set( 0.,
-                     0,
-                     0.
-                     ) ; 
+            metL.SetPtEtaPhiE( theMET->getCorPt(),
+                               theMET->eta(),
+                               theMET->getCorPhi(),
+                               theMET->energy()
+                               ) ; 
 
-             //met.set( met_.pt(),
-             //        met_.eta() ,
-             //        met_.phi() 
-             //        ) ;      
 
             std::vector<edm::Ptr<flashgg::Muon> > goodMuons = selectMuons( theMuons->ptrs(), dipho, vertices->ptrs(), leptonEtaThreshold_ , leptonPtThreshold_,
                                                                            muPFIsoSumRelThreshold_, deltaRLepPhoThreshold_, deltaRLepPhoThreshold_ );
@@ -526,6 +536,7 @@ namespace flashgg {
             muonJets = false;
             ElectronJets = false;
 
+            /*
             float pt1 = diPhotons->ptrAt( diphoIndex )->leadingPhoton()->phi();
             float phi1 = diPhotons->ptrAt( diphoIndex )->leadingPhoton()->phi();
             float eta1 = diPhotons->ptrAt( diphoIndex )->leadingPhoton()->eta();
@@ -536,7 +547,6 @@ namespace flashgg {
 
             std::cout << "jet index!!!!!!!!!!!! "<< jetCollectionIndex<< std::endl;
 
-            /*
             for( UInt_t jetLoop = 0; jetLoop < Jets[jetCollectionIndex]->size() ; jetLoop++ ) {
                 Ptr<flashgg::Jet> jet  = Jets[jetCollectionIndex]->ptrAt( jetLoop );
                 
@@ -559,7 +569,6 @@ namespace flashgg {
 
             }
             */
-
 
 
             if( hasGoodMuons && !hasVetoElec) {
@@ -601,8 +610,8 @@ namespace flashgg {
                         TLorentzVector jet_lorentzVector;
                         jet_lorentzVector.SetPtEtaPhiE(  thejet->pt() , thejet->eta() , thejet->phi() , thejet->energy() );
                         std::cout <<  thejet->pt() << " "<< thejet->eta()<<" "<< thejet->phi()<< " "<< thejet->energy() <<std::endl;
-                        //particles_LorentzVector.push_back( jet_lorentzVector );
-                        //particles_RhoEtaPhiVector.push_back( math::RhoEtaPhiVector( thejet->pt(), thejet->eta(), thejet->phi() ) );
+                        particles_LorentzVector.push_back( jet_lorentzVector );
+                        particles_RhoEtaPhiVector.push_back( math::RhoEtaPhiVector( thejet->pt(), thejet->eta(), thejet->phi() ) );
              
 
                         bDiscriminatorValue = thejet->bDiscriminator( bTag_.c_str() );
@@ -692,8 +701,8 @@ namespace flashgg {
 
                         TLorentzVector jet_lorentzVector;
                         jet_lorentzVector.SetPtEtaPhiE(  thejet->pt() , thejet->eta() , thejet->phi() , thejet->energy() );
-                        //particles_LorentzVector.push_back( jet_lorentzVector );
-                        //particles_RhoEtaPhiVector.push_back( math::RhoEtaPhiVector( thejet->pt(), thejet->eta(), thejet->phi() ) );
+                        particles_LorentzVector.push_back( jet_lorentzVector );
+                        particles_RhoEtaPhiVector.push_back( math::RhoEtaPhiVector( thejet->pt(), thejet->eta(), thejet->phi() ) );
 
                         bDiscriminatorValue = thejet->bDiscriminator( bTag_.c_str() );
 
@@ -776,36 +785,42 @@ namespace flashgg {
 
             n_jets = tagJets.size() ; 
 
-            //if( tagBJets.size() >= bjetsNumberThreshold_ && tagJets.size() >= jetsNumberThreshold_ && photonSelection
-            //    && ( ( (tagMuons.size() == 1 && muonJets) and  (tagElectrons.size() == 0 && !ElectronJets) )  || ( (tagMuons.size() == 0 && !muonJets)  and  (tagElectrons.size() == 1 && ElectronJets) ) ) ) {
+            if( tagBJets.size() >= bjetsNumberThreshold_ && tagJets.size() >= jetsNumberThreshold_ && photonSelection
+                && ( ( (tagMuons.size() == 1 && muonJets) and  (tagElectrons.size() == 0 && !ElectronJets) )  || ( (tagMuons.size() == 0 && !muonJets)  and  (tagElectrons.size() == 1 && ElectronJets) ) ) ) {
                 if( tagElectrons.size() > 0 && ElectronJets ) {
-                    //                    std::cout << "including electron weights" << std::endl;
+                    std::cout << "including electron weights" << std::endl;
                     thqltags_obj.includeWeights( *tagElectrons[0] );
                 } else if( tagMuons.size() > 0 && muonJets ) {
-                    //                    std::cout << "including muon weights" << std::endl;
+                    std::cout << "including muon weights" << std::endl;
                     thqltags_obj.includeWeights( *tagMuons[0] );
                 }
 
                 //TLorentzVector bL,fwdJL;
-                //bL.SetPtEtaPhiE( MediumBJetVect_BSorted[0]->pt(), MediumBJetVect_BSorted[0]->eta(), MediumBJetVect_BSorted[0]->phi(), MediumBJetVect_BSorted[0]->energy());
-                //if (LightJetVect_BSorted.size()>1)
-                //    std::cout<< " met prin: " << met.LorentzVector().X() << " "<< met.LorentzVector().E()<< " "<< LightJetVect_EtaSorted[0]->eta()<< " "<<LightJetVect_EtaSorted[1]->eta()<< std::endl; 
+                bL.SetPtEtaPhiE( MediumBJetVect_BSorted[0]->pt(), MediumBJetVect_BSorted[0]->eta(), MediumBJetVect_BSorted[0]->phi(), MediumBJetVect_BSorted[0]->energy());
+                fwdJL.SetPtEtaPhiE( SelJetVect_EtaSorted[0]->pt(),SelJetVect_EtaSorted[0]->eta(), SelJetVect_EtaSorted[0]->phi(), SelJetVect_EtaSorted[0]->energy());
                 
-                //flashgg::SemiLepTopQuark singletop(bjet.LorentzVector(), met.LorentzVector(), lepton.LorentzVector(), fwdJL,fwdJL);
-                // met.SetLorentzVector(singletop.getMET());
-                
+                if (std::abs(fwdJL.Mag() - bL.Mag()) < std::numeric_limits<float>::epsilon() )
+                    fwdJL.SetPtEtaPhiE( SelJetVect_EtaSorted[1]->pt(),SelJetVect_EtaSorted[1]->eta(), SelJetVect_EtaSorted[1]->phi(), SelJetVect_EtaSorted[1]->energy());   
+
+                    
+                flashgg::SemiLepTopQuark singletop(bL, metL, lepton.LorentzVector(), fwdJL,fwdJL);
+                //met.SetLorentzVector(singletop.getMET());
+                metL = singletop.getMET() ;
+                jprime_eta  = fwdJL.Eta();
+                met_pt = metL.Pt();
                 //met.SetLorentzVector(flashgg::SemiLepTopQuark(bL, met.LorentzVector(), lepton.LorentzVector(), fwdJL,fwdJL).getMET());
                 //if (LightJetVect_BSorted.size()>1)
-                //    std::cout<< " met meta: " << met.LorentzVector().X() << " "<< met.LorentzVector().E()<< " "<< LightJetVect_EtaSorted[0]->eta()<< " "<<LightJetVect_EtaSorted[1]->eta()<< std::endl; 
+                //std::cout<< " met meta: " << met.LorentzVector().X() << " "<< met.LorentzVector().E()<< " "<< LightJetVect_EtaSorted[0]->eta()<< " "<<LightJetVect_EtaSorted[1]->eta()<< std::endl; 
+                
                 
                 //TVector3 jprimev3;
                 //jprime.set( LightJetVect_EtaSorted[0]->pt() , 
                 //            LightJetVect_EtaSorted[0]->eta(),
                 //            LightJetVect_EtaSorted[0]->phi());
                 
-                jprime.set( 0.,
-                            0.,
-                            0.);
+                //jprime.set( 0.,
+                //            0.,
+                //            0.);
 
                 //particles_LorentzVector.push_back( met.LorentzVector() ) ;
 
@@ -987,10 +1002,10 @@ namespace flashgg {
                     thqltags->back().setTagTruth( edm::refToPtr( edm::Ref<vector<VBFTagTruth> >( rTagTruth, idx++ ) ) );
                 }
                 */
-                // }//thq tag
-            //else {
-            //    std::cout << " THQLeptonicTagProducer NO TAG " << std::endl;
-            // }
+            }//thq tag
+            else {
+                std::cout << " THQLeptonicTagProducer NO TAG " << std::endl;
+            }
             
         }//diPho loop end !
         evt.put( thqltags );
