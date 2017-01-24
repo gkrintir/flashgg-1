@@ -294,8 +294,8 @@ namespace flashgg {
             //vector<bool> IDs=EgammaIDs(Electron, vertexPointers );
             vector<bool> IDs;
             IDs.clear();
-            IDs.push_back(Electron->passLooseId());
-            IDs.push_back(Electron->passMediumId());
+            IDs.push_back(Electron->passVetoId());
+            IDs.push_back(Electron->passTightId());
             IDs.push_back(Electron->passMVAMediumId());
             IDs.push_back(Electron->passMVATightId());
             

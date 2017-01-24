@@ -24,14 +24,17 @@ namespace flashgg {
         const std::vector<edm::Ptr<flashgg::Electron> > electrons() const {return Electrons_;}
         const std::vector<edm::Ptr<Jet> > jets() const { return Jets_;}
         const std::vector<edm::Ptr<Jet> > bJets() const { return BJets_;}
-
+        const std::vector<edm::Ptr<Jet> > nonbJets() const { return nonBJets_;}
+        float thqleptonicMvaRes() const {return thqleptonicMvaRes_;}
         
         //const THQLeptonicMVAResult THQLeptonicMVA() const {return THQLeptonicMVA_;}
 
         void setJets( std::vector<edm::Ptr<Jet> > Jets ) { Jets_ = Jets; }
         void setBJets( std::vector<edm::Ptr<Jet> > BJets )  { BJets_ = BJets;}
+        void setLightJets( std::vector<edm::Ptr<Jet> > Jets )  { nonBJets_ = Jets;}
         void setMuons( std::vector<edm::Ptr<Muon> > Muons ) {Muons_ = Muons;}
         void setElectrons( std::vector<edm::Ptr<Electron> > Electrons ) {Electrons_ = Electrons;}
+        void setMVAres(float val) {thqleptonicMvaRes_ = val;}
         //void setTHQLeptonicMVA( THQLeptonicMVAResult THQLeptonicMVA ) {THQLeptonicMVA_ = THQLeptonicMVA;}
 
     private:
@@ -39,6 +42,8 @@ namespace flashgg {
         std::vector<edm::Ptr<Electron> > Electrons_;
         std::vector<edm::Ptr<Jet> > Jets_;
         std::vector<edm::Ptr<Jet> > BJets_;
+        std::vector<edm::Ptr<Jet> > nonBJets_;
+        float thqleptonicMvaRes_;
         //THQLeptonicMVAResult THQLeptonicMVA_;
     };
 }
