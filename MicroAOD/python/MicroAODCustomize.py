@@ -72,12 +72,6 @@ class MicroAODCustomize(object):
                                VarParsing.VarParsing.varType.int,
                               'runSummer16EleID'
                               )
-        self.options.register('runSummer16EGMPhoID',
-                              1,
-                               VarParsing.VarParsing.multiplicity.singleton,
-                               VarParsing.VarParsing.varType.int,
-                              'runSummer16EGMPhoID'
-                              )
 
         self.parsed_ = False
 
@@ -130,14 +124,16 @@ class MicroAODCustomize(object):
                 self.customizeGGH(process)
             elif "vbf" in customize.datasetName.lower():
                 self.customizeVBF(process)
+            elif "bbh" in customize.datasetName.lower():
+                self.customizeBBH(process)
             elif "thq" in customize.datasetName.lower() or "thw" in customize.datasetName.lower():
-                raise Exception,"TH samples should not currently be classified as signal - see MicroAODCustomize.py"
+                self.customizeTH(process)
             else:
                 raise Exception,"processType=sig but datasetName does not contain recognized production mechanism - see MicroAODCustomize.py"
         if self.processType == "background":
             self.customizeBackground(process)
             if "thq" in customize.datasetName.lower() or "thw" in customize.datasetName.lower():
-                self.customizeTH(process)
+                raise Exception,"TH samples should now be classfied as signal - see MicroAODCustomize.py"
         if self.debug == 1:
             self.customizeDebug(process)
         if self.hlt == 1:
@@ -173,8 +169,7 @@ class MicroAODCustomize(object):
             self.customizeSummer16EleID(process)
         else:
             self.customizeSpring15EleID(process)
-        if self.runSummer16EGMPhoID:
-            self.customizeSummer16EGMPhoID(process)
+        print "Final customized process:",process.p
             
     # signal specific customization
     def customizeSignal(self,process):
@@ -221,7 +216,7 @@ class MicroAODCustomize(object):
         modules = process.flashggMicroAODGenSequence.moduleNames()
         from flashgg.MicroAOD.flashggMet_RunCorrectionAndUncertainties_cff import runMETs,setMetCorr
         runMETs(process,False) #!isMC
-        if "2016G" in customize.datasetName or "2016H" in customize.datasetName:
+        if "2016G" in customize.datasetName:
             from flashgg.MicroAOD.METcorr_multPhiCorr_80X_sumPt_cfi import multPhiCorr_Data_G_80X
             setMetCorr(process,multPhiCorr_Data_G_80X)
         else:    
@@ -234,7 +229,7 @@ class MicroAODCustomize(object):
                 path.remove( getattr(process,mod))
             print getattr(process,pathName)
         process.out.outputCommands.append("drop *_*Gen*_*_*")
-        process.out.outputCommands.append("keep *_reducedEgamma_*RecHit*_*") # for bad events
+        process.out.outputCommands.append("keep *_*_*RecHit*_*") # for bad events
         delattr(process,"flashggPrunedGenParticles") # will be run due to unscheduled mode unless deleted
         self.customizeHighMassIsolations(process)
         process.load("flashgg/MicroAOD/flashggDiPhotonFilter_cfi")
@@ -244,14 +239,9 @@ class MicroAODCustomize(object):
     def customizeDec2016Regression(self,process):
         if not (process.GlobalTag.globaltag == "80X_mcRun2_asymptotic_2016_TrancheIV_v7" or process.GlobalTag.globaltag == "80X_dataRun2_2016SeptRepro_v6"):
             raise Exception,"Regression application turned on but globalTag has unexpected value %s - see MicroAODCustomize.py" % process.GlobalTag.globaltag
-        
-        from EgammaAnalysis.ElectronTools.regressionWeights_cfi import regressionWeights
-        process = regressionWeights(process)
         process.load('EgammaAnalysis.ElectronTools.regressionApplication_cff')
         process.p.insert(0,process.regressionApplication)
         process.electronMVAValueMapProducer.srcMiniAOD = cms.InputTag("slimmedElectrons")
-        process.photonMVAValueMapProducer.srcMiniAOD = cms.InputTag("slimmedPhotons")
-        process.photonIDValueMapProducer.srcMiniAOD = cms.InputTag("slimmedPhotons")
 
     def customizeSpring15EleID(self,process):
         from PhysicsTools.SelectorUtils.tools.vid_id_tools import DataFormat,switchOnVIDElectronIdProducer,setupAllVIDIdsInModule,setupVIDElectronSelection
@@ -279,15 +269,6 @@ class MicroAODCustomize(object):
         process.flashggElectrons.eleTightIdMap = cms.InputTag("egmGsfElectronIDs:cutBasedElectronID-Summer16-80X-V1-tight")
         process.flashggElectrons.eleMVAMediumIdMap = cms.InputTag("egmGsfElectronIDs:mvaEleID-Spring16-GeneralPurpose-V1-wp90")
         process.flashggElectrons.eleMVATightIdMap = cms.InputTag("egmGsfElectronIDs:mvaEleID-Spring16-GeneralPurpose-V1-wp80")
-        process.flashggElectrons.mvaValuesMap = cms.InputTag("electronMVAValueMapProducer:ElectronMVAEstimatorRun2Spring16GeneralPurposeV1Values")
-
-    def customizeSummer16EGMPhoID(self,process):
-        from PhysicsTools.SelectorUtils.tools.vid_id_tools import DataFormat,switchOnVIDPhotonIdProducer,setupAllVIDIdsInModule,setupVIDPhotonSelection
-        dataFormat = DataFormat.MiniAOD
-        switchOnVIDPhotonIdProducer(process, DataFormat.MiniAOD)
-        my_id_modules = ['RecoEgamma.PhotonIdentification.Identification.mvaPhotonID_Spring16_nonTrig_V1_cff']
-        for idmod in my_id_modules:
-            setupAllVIDIdsInModule(process,idmod,setupVIDPhotonSelection)
 
     def customizeDataMuons(self,process):
         process.diPhotonFilter.src = "flashggSelectedMuons"
@@ -384,6 +365,16 @@ class MicroAODCustomize(object):
     def customizeVBF(self,process):
         process.rivetProducerHTXS.ProductionMode = "VBF"
 
+    def customizeBBH(self,process):
+        process.rivetProducerHTXS.ProductionMode = "BBH"
+        process.flashggPDFWeightObject.LHEEventTag = "source"
+        process.flashggPDFWeightObject.LHERunLabel = "source"
+
+    def customizeBBH(self,process):
+        process.rivetProducerHTXS.ProductionMode = "BBH"
+        process.flashggPDFWeightObject.LHEEventTag = "source"
+        process.flashggPDFWeightObject.LHERunLabel = "source"
+
     def customizeVH(self,process):
         process.rivetProducerHTXS.ProductionMode = "VH"
 
@@ -391,9 +382,12 @@ class MicroAODCustomize(object):
         process.rivetProducerHTXS.ProductionMode = "GGF"
 
     def customizeTH(self,process):
-        # N.B. should not be classified as a signal
         process.out.outputCommands.append("keep *_source_*_LHEFile")
-
+        process.rivetProducerHTXS.ProductionMode = "TH"
+        process.flashggPDFWeightObject.LHEEventTag = "source"
+        process.flashggPDFWeightObject.LHERunLabel = "source"
+        #process.flashggPDFWeightObject.  "NNPDF30_lo_as_0130.LHgrid"
+        
     def customizeGlobalTag(self,process):
         process.GlobalTag.globaltag = self.globalTag
 

@@ -58,13 +58,18 @@ namespace flashgg {
         bool doAlphasWeights_;
         bool doScaleWeights_;
         string generatorType ;
+
+        string runLabel_;
+        bool debug_;
 	};
     
 	PDFWeightProducer::PDFWeightProducer( const edm::ParameterSet &iConfig ):
 		LHEEventToken_( consumes<LHEEventProduct>( iConfig.getParameter<InputTag>( "LHEEventTag" ) ) ),
-        srcTokenGen_( consumes<GenEventInfoProduct>( iConfig.getParameter<InputTag>("GenTag") ) )
+        srcTokenGen_( consumes<GenEventInfoProduct>( iConfig.getParameter<InputTag>("GenTag") ) ),
+        runLabel_( iConfig.getParameter<string>("LHERunLabel") ),
+        debug_( iConfig.getParameter<bool>("Debug") )
 	{
-        consumes<LHERunInfoProduct,edm::InRun> (edm::InputTag("externalLHEProducer"));
+        consumes<LHERunInfoProduct,edm::InRun> (edm::InputTag(runLabel_));
 		tag_ = iConfig.getUntrackedParameter<string>( "tag", "initrwgt" );
         isStandardSample_ = iConfig.getUntrackedParameter<bool>("isStandardSample",true);
         doAlphasWeights_ = iConfig.getUntrackedParameter<bool>("doAlphasWeights",true);
@@ -89,7 +94,7 @@ namespace flashgg {
 		Handle<LHERunInfoProduct> run;
 		typedef vector<LHERunInfoProduct::Header>::const_iterator headers_const_iterator;
         
-        iRun.getByLabel( "externalLHEProducer", run );
+        iRun.getByLabel( runLabel_, run );
 		LHERunInfoProduct myLHERunInfoProduct = *( run.product() );
         
         //--- get info from LHERunInfoProduct
@@ -97,9 +102,11 @@ namespace flashgg {
 		for( headers_const_iterator iter = myLHERunInfoProduct.headers_begin(); iter != myLHERunInfoProduct.headers_end(); iter++ ) {
             
             vector<string> lines = iter->lines();
-            //for (unsigned int iLine = 0; iLine<lines.size(); iLine++) {
-            //    std::cout << lines.at(iLine);
-            //}
+            if (debug_) {
+                for (unsigned int iLine = 0; iLine<lines.size(); iLine++) {
+                    std::cout << lines.at(iLine);
+                }
+            }
             
 			if( ( iter->tag() ).compare( tag_ ) == 0 ) {
 				//cout << iter->tag() << endl;
@@ -154,6 +161,12 @@ namespace flashgg {
                 alphas_id_1 = "265400";
                 alphas_id_2 = "266400";
             }
+
+            if (pdfidx == 263400) {
+                alphas_id_1 = "263212";
+                alphas_id_2 = "263212";
+            }
+
             cout << "alpha_S min and max id             : " << alphas_id_1 << "   " << alphas_id_2 << endl;
         }
 
@@ -228,7 +241,9 @@ namespace flashgg {
                         }
                 }// end loop over PDF weights
 
-
+                if (debug_) {
+                    std::cout << "before Scale weights" << std::endl;
+                }
 
                 // -- Scale weights
                 if ( (weightgroupname1 && weightgroupname1.get() == scalevar)  || ( weightgroupname2 && weightgroupname2.get() == scalevar) ) {               
@@ -252,7 +267,7 @@ namespace flashgg {
 	void PDFWeightProducer::produce( Event &evt, const EventSetup & )
 	{
 
-        //cout << "Entering PDFWeightProducer::produce " <<endl;
+        cout << "Entering PDFWeightProducer::produce " <<endl;
 
 		Handle<LHEEventProduct> LHEEventHandle;
 		evt.getByToken( LHEEventToken_, LHEEventHandle );
@@ -261,7 +276,7 @@ namespace flashgg {
         evt.getByToken( srcTokenGen_, genInfo );
     
         gen_weight = genInfo->weight();
-        //cout << "gen weight = " << gen_weight <<endl;
+        cout << "gen weight = " << gen_weight <<endl;
 
 
 		std::auto_ptr<vector<flashgg::PDFWeightObject> > PDFWeight( new vector<flashgg::PDFWeightObject> );
@@ -272,8 +287,15 @@ namespace flashgg {
 
 
         for( unsigned int i = 0; i < LHEEventHandle->weights().size(); i++) {
-
-			int id_i = stoi( LHEEventHandle->weights()[i].id );
+            if (debug_) {
+                std::cout << i << " " << LHEEventHandle->weights()[i].id << std::endl;
+            }
+            int id_i;
+            try {
+                id_i = stoi( LHEEventHandle->weights()[i].id );
+            } catch ( std::invalid_argument ) {
+                continue;
+            }
 			
             // --- Get PDF weights
             for( unsigned int j = 0; j < PDFWeightProducer::pdf_indices.size(); j++ ){
@@ -310,10 +332,11 @@ namespace flashgg {
             
 		}// end loop over lhe weights
 
-
-		//cout << "Size of pdf weights    : " << inpdfweights.size() << endl;
-		//cout << "Size of scale weights  : " << PDFWeightProducer::scale_indices.size() << endl;
-		//cout << "Size of alpha_s weights: " << PDFWeightProducer::alpha_indices.size() << endl;
+        if (debug_) {
+            cout << "Size of pdf weights    : " << inpdfweights.size() << endl;
+            cout << "Size of scale weights  : " << PDFWeightProducer::scale_indices.size() << endl;
+            cout << "Size of alpha_s weights: " << PDFWeightProducer::alpha_indices.size() << endl;
+        }
         
 		
         // --- Get MCtoHessian PDF weights
