@@ -416,7 +416,7 @@ class MicroAODCustomize(object):
     def customizeTH(self,process):
         process.out.outputCommands.append("keep *_source_*_LHEFile")
         if not os.environ["CMSSW_VERSION"].count("CMSSW_9_2"):
-            process.rivetProducerHTXS.ProductionMode = "TH"
+        process.rivetProducerHTXS.ProductionMode = "TH"
         process.flashggPDFWeightObject.LHEEventTag = "source"
         process.flashggPDFWeightObject.LHERunLabel = "source"
         process.flashggPDFWeightObject.isStandardSample = False

@@ -3,7 +3,7 @@
   <version ClassVersion="10" checksum="1340095011"/>
 </class>
 <class name="flashgg::PDFWeightObject" ClassVersion="14">
-  <version ClassVersion="14" checksum="2888861521"/>
+  <version ClassVersion="14" checksum="3553131314"/>
   <version ClassVersion="13" checksum="3868816395"/>
   <version ClassVersion="12" checksum="3929296232"/>
   <version ClassVersion="11" checksum="103726048"/>
@@ -79,9 +79,12 @@
 </class>
 <class name="std::vector<flashgg::TTHHadronicTag>"/>
 <class name="edm::Wrapper<std::vector<flashgg::TTHHadronicTag> >"/>
+<class name="flashgg::THQLeptonicTag" ClassVersion="0"/>
+<class name="std::vector<flashgg::THQLeptonicTag>"/>
+<class name="edm::Wrapper<std::vector<flashgg::THQLeptonicTag> >"/>
 <class name="flashgg::VHMetTag" ClassVersion="11">
-   <version ClassVersion="10" checksum="3643272763"/>
-   <version ClassVersion="11" checksum="619869289"/>
+  <version ClassVersion="11" checksum="619869289"/>
+  <version ClassVersion="10" checksum="3643272763"/>
 </class>
 <class name="std::vector<flashgg::VHMetTag>"/>
 <class name="edm::Wrapper<std::vector<flashgg::VHMetTag> >"/>
@@ -123,6 +126,11 @@
 </class>
 <class name="std::vector<flashgg::VBFTagTruth>"/>
 <class name="edm::Wrapper<std::vector<flashgg::VBFTagTruth> >"/>
+<class name="flashgg::THQLeptonicTagTruth" ClassVersion="0">
+ <version ClassVersion="0" checksum="4051811987"/>
+</class>
+<class name="std::vector<flashgg::THQLeptonicTagTruth>"/>
+<class name="edm::Wrapper<std::vector<flashgg::THQLeptonicTagTruth> >"/>
 <class name="flashgg::VHLooseTag" ClassVersion="14">
  <version ClassVersion="14" checksum="1861363899"/>
  <version ClassVersion="13" checksum="3345591704"/>

@@ -1,4 +1,4 @@
-<library   name="FlashggTaggersPlugins" file="*.cc">
+n<library   name="FlashggTaggersPlugins" file="*.cc">
 <use   name="FWCore/Framework"/>
 <use   name="FWCore/PluginManager"/>
 <use   name="flashgg/DataFormats"/>
@@ -6,11 +6,12 @@
 <use   name="FWCore/Utilities"/>
 <use   name="CommonTools/Utils"/>
 <use   name="PhysicsTools/UtilAlgos"/>
-<use   name="RecoEgamma/EgammaTools"/>
+<use   name="PhysicsTools/CandUtils" />
 <use   name="roofit"/>
 <use   name="roottmva"/>
 <use   name="RecoEgamma/EgammaTools"/>
 <use   name="CommonTools/CandAlgos"/>
 <!-- Flags CXXFLAGS="-ggdb"/ -->
+<Flags CXXFLAGS="-ggdb"/>
 <flags   EDM_PLUGIN="1"/>
 </library>

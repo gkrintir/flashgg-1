@@ -117,6 +117,16 @@ private :
 
     vector<string> histoPaths;
 
+    string cut;
+    string cut_syst;
+    string getCut(TString name){
+        if( name.Index( "sigma" ) == TString::kNPOS )
+            return this->cut;
+        else
+            return this->cut;
+    };
+    std::vector<std::string> varsToKeep;
+    RooArgSet selectedVars;
 };
 
 

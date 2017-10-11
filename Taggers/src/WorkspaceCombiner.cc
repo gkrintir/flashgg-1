@@ -36,6 +36,14 @@ void WorkspaceCombiner::Init( string outputFileName_, vector<string> inputfiles_
 
     outputFileName = outputFileName_;
 
+    this->cut = "(CMS_hgg_mass > 100 && CMS_hgg_mass < 180)&&(LeptonType == 1 || LeptonType == 2) && (diphoMVA > -0.4)&&(n_jets >= 2) &&(n_M_bjets==1)&&(MET_pt > 30)"; //  &&MVA_Medium > 0 ";
+    this->cut_syst = "(CMS_hgg_mass > 100 && CMS_hgg_mass < 180)&&(LeptonType == 1 || LeptonType == 2) && (diphoMVA > -0.4)&&(n_jets >= 2) &&(n_M_bjets==1)&&(MET > 30)"; //  &&MVA_Medium > 0 ";
+    varsToKeep = {"CMS_hgg_mass", "diphoMVA", "dZ" , "weight" , "fwdjet1_eta" , "n_jets" , "n_M_bjets" , "n_L_bjets" , "centralObjectWeight","UnmatchedPUWeightUp01sigma","MvaLinearSystUp01sigma","LooseMvaSFUp01sigma","PreselSFUp01sigma","electronVetoSFUp01sigma","TriggerWeightUp01sigma","FracRVWeightUp01sigma","FracRVNvtxWeightUp01sigma","ElectronWeightUp01sigma","MuonWeightUp01sigma","MuonMiniIsoWeightUp01sigma","JetBTagCutWeightUp01sigma","JetBTagReshapeWeightUp01sigma","UnmatchedPUWeightDown01sigma","MvaLinearSystDown01sigma","LooseMvaSFDown01sigma","PreselSFDown01sigma","electronVetoSFDown01sigma","TriggerWeightDown01sigma","FracRVWeightDown01sigma","FracRVNvtxWeightDown01sigma","ElectronWeightDown01sigma","MuonWeightDown01sigma","MuonMiniIsoWeightDown01sigma","JetBTagCutWeightDown01sigma","JetBTagReshapeWeightDown01sigma" , "scaleUp_0" , "scaleDown_0" , "MVA_Medium" , "LeptonType" } ;
+    for( uint i = 0 ; i < 70 ; i++ )
+        varsToKeep.push_back( "ctcv_" + std::to_string( i ) );
+    for( uint i = 0 ; i < 101 ; i++ )
+        varsToKeep.push_back( "pdf_" + std::to_string( i ) );
+
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -80,12 +88,38 @@ void WorkspaceCombiner::GetWorkspaces( TDirectoryFile *tdfile )
             std::unordered_map<string, RooDataHist *> allDataHistClone;
             std::unordered_map<string, RooRealVar *> allVarClone;
             std::cout << " about to iterate over allData " << std::endl;
+
+
+            RooRealVar * datavar;
+            while((datavar=(RooRealVar*)vIter->Next())) {
+                if (datavar) {
+                    //
+                    if( std::find( varsToKeep.begin() , varsToKeep.end() ,  datavar->GetName() ) != varsToKeep.end() ){
+                        std::cout << datavar->GetName() << std::endl;
+                        selectedVars.add( *((RooAbsArg*)datavar) , true );
+                    
+                        //allVarClone.push_back( ( RooRealVar * )datavar->Clone() );
+                        allVarClone[std::string(datavar->GetName())] = ( ( RooRealVar * )datavar->Clone() );
+                        std::cout << "pushing back dataVAR " << datavar->GetName() << std::endl;
+                    }
+               }
+            }
+
+
             for( std::list<RooAbsData *>::iterator it = allData.begin(); it != allData.end(); ++it ) {
                 RooDataSet *dataset = dynamic_cast<RooDataSet *>( *it );
                 if (dataset) {
                     //                  allDataClone.push_back( ( RooDataSet * )dataset->Clone() );
-                    allDataClone[std::string(dataset->GetName())] = ( ( RooDataSet * )dataset->Clone() );
-                  std::cout << "pushing back dataset " << *dataset << std::endl;
+                    // allDataClone[std::string(dataset->GetName())] = ( ( RooDataSet * )dataset->Clone() );
+                    TString newName = TString( dataset->GetName() );
+
+                    // std::vector<std::string> pre_names = {"tth_", "thq_" , "thw_" , "ggh_" , "vbf_"};
+                    // for(auto old : pre_names )
+                    //     //newName = newName.ReplaceAll( "ggh" , "gghlep" );
+                    //     newName = newName.ReplaceAll( old , "mrg_");
+                    //allDataClone[std::string(dataset->GetName())]
+                    allDataClone[std::string(newName)] = ( ( RooDataSet * )dataset->reduce( Cut(this->getCut(newName).c_str()) , SelectVars(selectedVars) , Name( newName ) ) );
+                    std::cout << "pushing back dataset " << *dataset << std::endl;
                  }
             }
             for( std::list<RooAbsData *>::iterator it = allData.begin(); it != allData.end(); ++it ) {
@@ -95,14 +129,6 @@ void WorkspaceCombiner::GetWorkspaces( TDirectoryFile *tdfile )
                     allDataHistClone[std::string(datahist->GetName())] = ( ( RooDataHist * )datahist->Clone() );
                   std::cout << "pushing back dataHIST " << *datahist << std::endl;
 
-                }
-            }
-            RooRealVar * datavar;
-            while((datavar=(RooRealVar*)vIter->Next())) {
-                if (datavar) {
-                    //                allVarClone.push_back( ( RooRealVar * )datavar->Clone() );
-                    allVarClone[std::string(datavar->GetName())] = ( ( RooRealVar * )datavar->Clone() );
-                 std::cout << "pushing back dataVAR " << datavar->GetName() << std::endl;
                 }
             }
             std::cout << " gonna push back allDataClone " << std::endl;
@@ -172,12 +198,19 @@ void WorkspaceCombiner::MergeWorkspaces()
                 
                 // loop through datasets
                 if (dataset){
-                    if( data[w].find(std::string(dataset->GetName())) != data[w].end() ) {
+
+                    TString newName = TString( dataset->GetName() );
+
+                    // std::vector<std::string> pre_names = {"tth_", "thq_" , "thw_" , "ggh_" , "vbf_"};
+                    // for(auto old : pre_names )
+                    //     newName = newName.ReplaceAll( old , "mrg_");
+                    //std::string(dataset->GetName())
+                    if( data[w].find(std::string(newName)) != data[w].end() ) {
                         
                         //                    for( d = 0 ; d < data[w].size() ; d++ ) {
                         //                        if( data[w][d]->GetName() == dataset->GetName() ) {
                         //lC    if (dataset) 
-                        data[w][std::string(dataset->GetName())]->append( *dataset );
+                        data[w][std::string(newName.Data())]->append( *dynamic_cast<RooDataSet *>( dataset->reduce( this->getCut(newName).c_str()) ));
                         //                            break;
                         //                        }
                     }
@@ -187,7 +220,7 @@ void WorkspaceCombiner::MergeWorkspaces()
                         //                        std::map<std::string, RooDataSet *> temp_map;
                         //                        temp_map[dataset->GetName()] = ( RooDataSet * )dataset->Clone();
                         //                        data[w].push_back(  );
-                        data[w].insert( std::pair<string, RooDataSet *>(std::string(dataset->GetName()),( RooDataSet * )dataset->Clone() )  );
+                        data[w].insert( std::pair<string, RooDataSet *>(std::string(dataset->GetName()),( RooDataSet * )dataset->reduce( this->getCut(newName).c_str()) )  );
                     }
                 }
                 /// do the same for dataHists
